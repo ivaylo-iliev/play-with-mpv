@@ -4,6 +4,7 @@
 import sys
 from subprocess import Popen
 from shutil import which
+
 PORT = 7531
 # Use --public if you want the server and extension on different computers
 hostname = 'localhost'
@@ -49,11 +50,21 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler, CompatibilityMixin):
                              query.get("mpv_args", []))
             else:
                 mpv_command = 'mpv'
+                # Celluloid support.
                 if which('celluloid') is not None:
                     mpv_command = 'celluloid'
-                if "list" in query and which('celluloid') is not None:
-                    urls = str(query["play_url"][0] + "&list=" + query["list"][0])
-                    mpv_options='--mpv-ytdl-format="' + str(query["mpv_args"][0]) + '"'
+                    urls = ''
+                    mpv_options = ''
+                    urls = str(query["play_url"][0])
+
+                    # Playlist support
+                    if "list" in query:
+                        urls += str("&list=" + query["list"][0])
+                    
+                    # Translate mpv options to celluloid
+                    if "mpv_args" in query:
+                        mpv_options='--mpv-ytdl-format="' + str(query["mpv_args"][0]) + '"'
+
                     pipe = Popen([mpv_command, urls, mpv_options])
                 else:
                     pipe = Popen([mpv_command, urls, '--force-window'] +
