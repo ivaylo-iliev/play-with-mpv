@@ -44,7 +44,7 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler, CompatibilityMixin):
         if query.get('mpv_args'):
             print("MPV ARGS:", query.get('mpv_args'))
         if "play_url" in query:
-            urls = str(query["play_url"])
+            urls = str(query["play_url"][0])
             if urls.startswith('magnet:') or urls.endswith('.torrent'):
                 pipe = Popen(['peerflix', '-k',  urls, '--', '--force-window'] +
                              query.get("mpv_args", []))
@@ -52,22 +52,33 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler, CompatibilityMixin):
                 mpv_command = 'mpv'
                 # Celluloid support.
                 if which('celluloid') is not None:
-                    mpv_command = 'celluloid'
-                    urls = ''
-                    mpv_options = ''
-                    urls = str(query["play_url"][0])
-
                     # Playlist support
                     if "list" in query:
-                        urls += str("&list=" + query["list"][0])
+                        urls += str("&list={}".format(query["list"][0]))
+                    mpv_command = 'celluloid'
+                    mpv_options = []
                     
                     # Translate mpv options to celluloid
-                    if "mpv_args" in query:
-                        mpv_options='--mpv-ytdl-format="' + str(query["mpv_args"][0]) + '"'
-
-                    pipe = Popen([mpv_command, urls, mpv_options])
+                    for mpv_arg in query["mpv_args"]:
+                        if '--ytdl-format' in mpv_arg:
+                            mpv_options.append(mpv_arg.replace('--ytdl-format=', '--mpv-ytdl-format="') + '"')
+                        else:
+                            mpv_options.append(mpv_arg)
+                        
+                    pipe = Popen([mpv_command, urls] + mpv_options)
                 else:
-                    pipe = Popen([mpv_command, urls, '--force-window'] +
+                    if "list" in query:
+                        list_url = 'https://www.youtube.com/playlist?list={}'.format(query["list"][0])
+                        
+                        ytdl_format = ''
+                        if query["mpv_args"] is not None:
+                            ytdl_format = '--ytdl-format={}'.format(query["mpv_args"][0])
+
+                        pipe = Popen([mpv_command, list_url, '--force-window'] +
+                             query.get("mpv_args", []))
+                    else:
+                        mpv_options = ''
+                        pipe = Popen([mpv_command, urls, '--force-window'] +
                              query.get("mpv_args", []))
             self.respond(200, "playing...")
         elif "cast_url" in query:
