@@ -38,24 +38,28 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler, CompatibilityMixin):
             self.send_body(body)
 
     def play_with_mpv(self, query):
+        mpv_command='mpv'
         if "list" in query:
             list_url = 'https://www.youtube.com/playlist?list={}'.format(
                 query["list"][0])
 
             ytdl_format = ''
-            if query["mpv_args"] is not None:
-                ytdl_format = '--ytdl-format={}'.format(query["mpv_args"][0])
+            if "mpv_args" in query:
+                if query["mpv_args"] is not None:
+                    ytdl_format = '--ytdl-format={}'.format(query["mpv_args"][0])
 
             return Popen([mpv_command, list_url, '--force-window'] +
                          query.get("mpv_args", []))
         else:
             mpv_options = ''
+            urls = str(query["play_url"][0])
             return Popen([mpv_command, urls, '--force-window'] +
                          query.get("mpv_args", []))
 
     def play_with_celluloid(self, query):
         if which('celluloid') is not None:
             # Playlist support
+            urls = ''
             if "list" in query:
                 urls += str("&list={}".format(query["list"][0]))
             mpv_command = 'celluloid'
@@ -72,6 +76,7 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler, CompatibilityMixin):
             return Popen([mpv_command, urls] + mpv_options)
 
     def do_GET(self):
+        mpv_command='mpv'
         try:
             url = urlparse.urlparse(self.path)
             query = urlparse.parse_qs(url.query)
